@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест на EQ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="mbti.html">MBTI</a>
+            <a href="attachment.html">Привязанность</a>
+            <a href="temperament.html">Темперамент</a>
+            <a href="eq-test.html">EQ</a>
+            <a href="burnout-test.html">Выгорание</a>
+            <a href="profile.html">📊 Мои результаты</a>
+        </nav>
+    </header>
+    <main>
+        <h1>🎭 Тест на эмоциональный интеллект (EQ)</h1>
+        <div id="quiz-area"></div>
+        <div id="result-area" class="result-area" style="display: none;"></div>
+    </main>
+    <footer><p>Учебный проект для колледжа © 2025</p></footer>
+    <button class="theme-toggle" onclick="toggleTheme()">🌓 Тёмная тема</button>
+
+    <script src="google-sheet.js"></script>
+    <script>
+        const questions = [
+            { text: "Я легко понимаю, что чувствуют другие люди.", reverse: false },
+            { text: "Когда я злюсь, я могу контролировать свой гнев.", reverse: false },
+            { text: "Мне трудно подобрать слова для своих эмоций.", reverse: true },
+            { text: "Я замечаю, когда моё настроение начинает меняться.", reverse: false },
+            { text: "Я умею успокаивать расстроенного человека.", reverse: false },
+            { text: "Иногда я говорю что-то, о чём потом жалею, под влиянием эмоций.", reverse: true },
+            { text: "Я могу представить, как чувствует себя другой человек в сложной ситуации.", reverse: false },
+            { text: "Мне тяжело справляться с критикой.", reverse: true },
+            { text: "Я умею радоваться за других даже в трудный для себя момент.", reverse: false },
+            { text: "Я часто не понимаю, почему я испытываю ту или иную эмоцию.", reverse: true }
+        ];
+
+        let currentIndex = 0;
+        let answers = [];
+
+        function renderQuestion() {
+            if (currentIndex >= questions.length) {
+                showResult();
+                return;
+            }
+            const q = questions[currentIndex];
+            let html = `<div class="question-card"><strong>${currentIndex+1}. ${q.text}</strong><div class="options-row">`;
+            for (let i = 1; i <= 5; i++) {
+                html += `<div class="opt-btn" data-score="${i}">${i}</div>`;
+            }
+            html += `</div></div>`;
+            document.getElementById("quiz-area").innerHTML = html;
+
+            document.querySelectorAll(".opt-btn").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    let score = parseInt(btn.dataset.score);
+                    if (questions[currentIndex].reverse) score = 6 - score;
+                    answers.push(score);
+                    currentIndex++;
+                    renderQuestion();
+                });
+            });
+        }
+
+        function showResult() {
+            let total = answers.reduce((a,b) => a+b, 0);
+            let percent = (total / 50 * 100).toFixed(0);
+            let level = percent >= 80 ? "Очень высокий" : percent >= 60 ? "Высокий" : percent >= 40 ? "Средний" : "Низкий";
+            let description = percent >= 80 ? "Вы отлично понимаете себя и других!" : percent >= 60 ? "Хороший уровень, продолжайте развивать эмпатию." : percent >= 40 ? "Есть потенциал для роста." : "Рекомендуется работа над эмоциональной осознанностью.";
+            
+            const resultText = `Уровень: ${level} (${percent}%)`;
+            localStorage.setItem('lastEQ', resultText);
+            localStorage.setItem('lastEQDesc', description);
+            
+            const user = JSON.parse(localStorage.getItem('currentUser'));
+            if (user) {
+                if (!user.results) user.results = {};
+                user.results.eq = resultText;
+                user.results.eqDesc = description;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                
+                if (typeof sendTestResult === 'function') {
+                    sendTestResult(user.name, user.age, user.gender, "Эмоциональный интеллект (EQ)", level, `${percent}% - ${description}`);
+                }
+            }
+            
+            document.getElementById("quiz-area").style.display = "none";
+            document.getElementById("result-area").style.display = "block";
+            document.getElementById("result-area").innerHTML = `
+                <h2>Ваш уровень EQ: <strong>${level}</strong></h2>
+                <p>Вы набрали ${total} из 50 баллов (${percent}%)</p>
+                <p>${description}</p>
+                <p><small>✅ Результат сохранён в вашем профиле и отправлен в Google Таблицу.</small></p>
+                <button onclick="location.reload()">Пройти заново</button>
+                <a href="index.html" class="button" style="margin-left: 1rem;">🏠 На главную</a>
+            `;
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const btn = document.querySelector('.theme-toggle');
+            if (document.body.classList.contains('dark')) {
+                btn.textContent = '☀️ Светлая тема';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                btn.textContent = '🌓 Тёмная тема';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark');
+            document.querySelector('.theme-toggle').textContent = '☀️ Светлая тема';
+        }
+
+        renderQuestion();
+    </script>
+</body>
+</html>
